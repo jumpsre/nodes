@@ -62,28 +62,41 @@ function install_0g() {
 	echo -e '\n\e[42mInstall software\e[0m\n' && sleep 1
 
 	sleep 1
+	
+	# install 0g-chain
 	cd $HOME
 	rm -rf 0g-chain
 	git clone -b v${OG_VERSION} https://github.com/0glabs/0g-chain.git
-	./0g-chain/networks/testnet/install.sh
+	cd 0g-chain
+	make install
 	source ~/.profile
+	$DAEMON_NAME version
 
+	# init node
 
 	$DAEMON_NAME init "${VALIDATOR}" --chain-id "$CHAIN_ID"
 	sleep 1
-	$DAEMON_NAME config keyring-backend test
 	$DAEMON_NAME config chain-id $CHAIN_ID
-	wget -O $DAEMON_HOME/config/genesis.json https://github.com/0glabs/0g-chain/releases/download/v0.2.3/genesis.json
+	$DAEMON_NAME config keyring-backend test
+	
+	# download genesis
+	rm $DAEMON_HOME/config/genesis.json
+	wget https://github.com/0glabs/0g-chain/releases/download/v0.2.3/genesis.json  -O $DAEMON_HOME/config/genesis.json
 
+	# add seed and peer
 	SEEDS="81987895a11f6689ada254c6b57932ab7ed909b6@54.241.167.190:26656,010fb4de28667725a4fef26cdc7f9452cc34b16d@54.176.175.48:26656,e9b4bc203197b62cc7e6a80a64742e752f4210d5@54.193.250.204:26656,68b9145889e7576b652ca68d985826abd46ad660@18.166.164.232:26656"
 	sed -i.bak -e "s/^seeds *=.*/seeds = \"${SEEDS}\"/" $DAEMON_HOME/config/config.toml
-	#sed -i "s/^minimum-gas-prices *=.*/minimum-gas-prices = \"0.00252aevmos\"/" $DAEMON_HOME/config/app.toml
-
 	PEERS="6dbb0450703d156d75db57dd3e51dc260a699221@152.53.47.155:13456,1bf93ac820773970cf4f46a479ab8b8206de5f60@62.171.185.81:12656,df4cc52fa0fcdd5db541a28e4b5a9c6ce1076ade@37.60.246.110:13456,66d59739b6b4ff0658e63832a5bbeb29e5259742@144.76.79.209:26656,76cc5b9beaff9f33dc2a235e80fe2d47448463a7@95.216.114.170:26656,adc616f440155f4e5c2bf748e9ac3c9e24bf78ac@51.161.13.62:26656,cd662c11f7b4879b3861a419a06041c782f1a32d@89.116.24.249:26656,40cf5c7c11931a4fdab2b721155cc236dfe7a809@84.46.255.133:12656,11945ced69c3448adeeba49355703984fcbc3a1a@37.27.130.146:26656,c02bf872d61f5dd04e877105ded1bd03243516fb@65.109.25.252:12656,d5e294d6d5439f5bd63d1422423d7798492e70fd@77.237.232.146:26656,386c82b09e0ec6a68e653a5d6c57f766ae73e0df@194.163.183.208:26656,4eac33906b2ba13ab37d0e2fe8fc5801e75f25a0@154.38.168.168:13456,c96b65a5b02081e3111b8b38cd7f5df76c7f9404@185.182.185.160:26656,48e3cab55ba7a1bc8ea940586e4718a857de84c4@178.63.4.186:26656"
-
 	sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $DAEMON_HOME/config/config.toml
 
+	# set min gas price
 	sed -i "s/^minimum-gas-prices *=.*/minimum-gas-prices = \"0ua0gi\"/" $DAEMON_HOME/config/app.toml
+
+
+	sed -i.bak -e "s/^pruning *=.*/pruning = \"custom\"/" $DAEMON_HOME/config/app.toml
+	sed -i.bak -e "s/^pruning-keep-recent *=.*/pruning-keep-recent = \"100\"/" $DAEMON_HOME/config/app.toml
+	sed -i.bak -e "s/^pruning-interval *=.*/pruning-interval = \"50\"/" $DAEMON_HOME/config/app.toml
+	sed -i.bak -e "s/prometheus = false/prometheus = true/" $DAEMON_HOME/config/config.toml
 
 
 	if awk "BEGIN {exit ($OG_VERSION < 0.3.0) ? 0 : 1}"; then
@@ -124,11 +137,11 @@ sudo tee <<EOF >/dev/null /etc/systemd/journald.conf
 Storage=persistent
 EOF
 
-	#echo -e '\n\e[42mDownloading a snapshot\e[0m\n' && sleep 1
+	echo -e '\n\e[42mDownloading a snapshot\e[0m\n'
 	curl https://snapshots.nodes.guru/og/latest_snapshot.tar.lz4 | lz4 -dc - | tar -xf - -C $DAEMON_HOME
 	wget -O $DAEMON_HOME/config/addrbook.json https://snapshots.nodes.guru/og/addrbook.json
 
-	echo -e '\n\e[42mChecking a ports\e[0m\n' && sleep 1
+	echo -e '\n\e[42mChecking a ports\e[0m\n'
 	#CHECK PORTS
 	PORT=335
 	if ss -tulpen | awk '{print $5}' | grep -q ":26656$" ; then
@@ -201,12 +214,13 @@ EOF
 	sudo systemctl daemon-reload
 	sudo systemctl enable $NODE
 	sudo systemctl restart $NODE
+	sudo journalctl -u $NODE -f -o cat
 
+	echo '=============== SETUP FINISHED ==================='
 	echo -e '\n\e[42mCheck node status\e[0m\n' && sleep 1
 	if [[ `service $NODE status | grep active` =~ "running" ]]; then
 	  echo -e "Your $NODE node \e[32minstalled and works\e[39m!"
 	  echo -e "You can check node status by the command \e[7mservice 0g status\e[0m"
-	  echo -e "Press \e[7mQ\e[0m for exit from status menu"
 	else
 	  echo -e "Your $NODE node \e[31mwas not installed correctly\e[39m, please reinstall."
 	fi
@@ -223,6 +237,12 @@ function get_block_sync_status() {
 		echo -e "\e[32m 你的 $NODE 节点已经同步 \e[39m!"
 	else
 		echo -e "\e[31m 你的 $NODE 节点未同步 \e[39m!"
+		local_height=$($DAEMON_NAME status | jq -r .sync_info.latest_block_height)
+		network_height=$(curl -s https://chainscan-newton.0g.ai/v1/homeDashboard | jq -r .result.blockNumber)
+		block_left=$(($network_height - $local_height ))
+		echo "Your node height: " $local_height
+		echo "Network height: " $network_height
+		echo "Blocks lef:" $block_left
 	fi
 	
 	
