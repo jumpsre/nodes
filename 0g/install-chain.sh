@@ -6,7 +6,7 @@ export DAEMON_HOME=$HOME/.0gchain
 export DAEMON_NAME=0gchaind
 bash_profile=$HOME/.bash_profile
 VERSION=1.21.13
-OG_VERSION=0.2.3
+OG_VERSION=0.3.1
 
 exists()
 
