@@ -61,78 +61,133 @@ install_docker_compose() {
 setup_instance() {
   local instance_number=$1
   local wallet_seed=$2
+  local work_home=/root/allora-huggingface-instances
+  local hf_home=instance-hf
 
-  print_message "正在设置实例 #${instance_number}..."
+  print_message "正在设置Huggingface实例 #${instance_number}..."
 
   # 创建实例目录
-  mkdir -p /root/allora-instances/instance-${instance_number}
-  cd /root/allora-instances/instance-${instance_number}
+  mkdir -p $work_home/${hf_home}-${instance_number}
+  cd $work_home/${hf_home}-${instance_number}
 
   # 克隆仓库
-  git clone https://github.com/allora-network/basic-coin-prediction-node .
+git clone https://github.com/allora-network/allora-huggingface-walkthrough .
+
+mkdir -p worker-data
+chmod -R 777 worker-data
 
   # 复制配置文件
   # cp ./config.example.json ./config.json
   sudo rm -rf ./config.json
-  cat >/root/allora-instances/instance-${instance_number}/config.json <<EOL
+  cat >$work_home/${hf_home}-${instance_number}/config.json <<EOL
 {
-  "wallet": {
-    "addressKeyName": "$instance_number",
-    "addressRestoreMnemonic": "$wallet_seed",
-    "alloraHomeDir": "",
-    "gas": "1000000",
-    "gasAdjustment": 1.0,
-    "nodeRpc": "https://allora-rpc.testnet-1.testnet.allora.network/",
-    "maxRetries": 1,
-    "delay": 1,
-    "submitTx": false
-  },
-  "worker": [
-    {
-      "topicId": 1,
-      "inferenceEntrypointName": "api-worker-reputer",
-      "loopSeconds": 5,
-      "parameters": {
-        "InferenceEndpoint": "http://inference:8000/inference/{Token}",
-        "Token": "ETH"
-      }
-    },
-    {
-      "topicId": 2,
-      "inferenceEntrypointName": "api-worker-reputer",
-      "loopSeconds": 5,
-      "parameters": {
-        "InferenceEndpoint": "http://inference:8000/inference/{Token}",
-        "Token": "ETH"
-      }
-    },
-    {
-      "topicId": 7,
-      "inferenceEntrypointName": "api-worker-reputer",
-      "loopSeconds": 5,
-      "parameters": {
-        "InferenceEndpoint": "http://inference:8000/inference/{Token}",
-        "Token": "ETH"
-      }
-    }
-  ]
+   "wallet": {
+       "addressKeyName": "$instance_number",
+       "addressRestoreMnemonic": "$wallet_seed",
+       "alloraHomeDir": "/root/.allorad",
+       "gas": "1000000",
+       "gasAdjustment": 1.0,
+       "nodeRpc": "https://allora-rpc.testnet-1.testnet.allora.network/",
+       "maxRetries": 1,
+       "delay": 1,
+       "submitTx": false
+   },
+   "worker": [
+       {
+           "topicId": 1,
+           "inferenceEntrypointName": "api-worker-reputer",
+           "loopSeconds": 1,
+           "parameters": {
+               "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+               "Token": "ETH"
+           }
+       },
+       {
+           "topicId": 2,
+           "inferenceEntrypointName": "api-worker-reputer",
+           "loopSeconds": 3,
+           "parameters": {
+               "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+               "Token": "ETH"
+           }
+       },
+       {
+           "topicId": 3,
+           "inferenceEntrypointName": "api-worker-reputer",
+           "loopSeconds": 5,
+           "parameters": {
+               "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+               "Token": "BTC"
+           }
+       },
+       {
+           "topicId": 4,
+           "inferenceEntrypointName": "api-worker-reputer",
+           "loopSeconds": 2,
+           "parameters": {
+               "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+               "Token": "BTC"
+           }
+       },
+       {
+           "topicId": 5,
+           "inferenceEntrypointName": "api-worker-reputer",
+           "loopSeconds": 4,
+           "parameters": {
+               "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+               "Token": "SOL"
+           }
+       },
+       {
+           "topicId": 6,
+           "inferenceEntrypointName": "api-worker-reputer",
+           "loopSeconds": 5,
+           "parameters": {
+               "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+               "Token": "SOL"
+           }
+       },
+       {
+           "topicId": 7,
+           "inferenceEntrypointName": "api-worker-reputer",
+           "loopSeconds": 2,
+           "parameters": {
+               "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+               "Token": "ETH"
+           }
+       },
+       {
+           "topicId": 8,
+           "inferenceEntrypointName": "api-worker-reputer",
+           "loopSeconds": 3,
+           "parameters": {
+               "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+               "Token": "BNB"
+           }
+       },
+       {
+           "topicId": 9,
+           "inferenceEntrypointName": "api-worker-reputer",
+           "loopSeconds": 5,
+           "parameters": {
+               "InferenceEndpoint": "http://inference:8000/inference/{Token}",
+               "Token": "ARB"
+           }
+       }
+       
+   ]
 }
 EOL
   # 修改配置文件
-  # sed -i "s/\"addressKeyName\": \".*\"/\"addressKeyName\": \"$instance_number\"/" ./config.json
-  # sed -i "s/\"addressRestoreMnemonic\": \".*\"/\"addressRestoreMnemonic\": \"$wallet_seed\"/" ./config.json
-  # sed -i "s|\"nodeRpc\": \".*\"|\"nodeRpc\": \"https://sentries-rpc.testnet-1.testnet.allora.network/\"|" ./config.json  
+  sed -i -e 's|\"x-cg-demo-api-key\":.*|\"x-cg-demo-api-key\": \"CG-cvWQhNfqoWQxkg82gZtDmsCf\"|' ./app.py
+  sed -i "s/- \"8000:8000\"/- \"$((8100 + instance_number)):8000\"/" ./docker-compose.yaml
+  sed -i "s/container_name: inference-hf/container_name: inference-hf_$instance_number/" ./docker-compose.yaml
+  sed -i "s/container_name: worker/container_name: worker-hf_$instance_number/" ./docker-compose.yaml
 
   # 给与初始化脚本运行权限
   chmod +x init.config
   # 执行初始化
   ./init.config
-
-  # 修改docker-compose配置，避免端口或名字冲突
-  sed -i "s/- \"8000:8000\"/- \"$((8000 + instance_number)):8000\"/" ./docker-compose.yml
-  sed -i "s/container_name: inference-basic-eth-pred/container_name: inference-basic-eth-pred_$instance_number/" ./docker-compose.yml
-  sed -i "s/container_name: updater-basic-eth-pred/container_name: updater-basic-eth-pred_$instance_number/" ./docker-compose.yml
-  sed -i "s/container_name: worker/container_name: worker_$instance_number/" ./docker-compose.yml
   
   # 运行节点
   docker-compose build
@@ -181,7 +236,7 @@ main() {
  #read -p "请输入要运行的实例开始数字: " num_start
   #read -p "请输入要运行的实例结束数字: " num_instances
   num_start=1
-  num_instances=5
+  num_instances=3
 
 #   for ((i = 1; i <= num_instances; i++)); do
 #     read -p "请输入实例 #${i} 的钱包助记词: " wallet_seed
@@ -199,12 +254,6 @@ main() {
   print_warning "请检查 docker 容器状态："
   docker ps
 
-  print_message "你可以使用以下命令检查各个节点的状态："
-  for ((i = 1; i <= num_instances; i++)); do
-    echo "实例 #${i}:"
-    echo "检查 Worker 节点: curl http://localhost:$((8000 + i))/inference/ETH"
-    echo ""
-  done
 }
 
 # 运行主函数
